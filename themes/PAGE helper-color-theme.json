@@ -1,0 +1,41 @@
+{
+	"name": "PAGE helper",
+	"colors": {
+		"editor.background": "#151819",
+		"editor.foreground": "#ddf2f2",
+		"activityBarBadge.background": "#007acc",
+		"sideBarTitle.foreground": "#bbbbbb"
+	},
+	"tokenColors": [
+		{
+			"name": "keywords",
+			"scope": ["keyword.control.page"],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#14d137"
+			}
+		},
+		{
+			"name": "strings",
+			"scope": ["string.quoted.double.page"],
+			"settings": {
+				"foreground": "#5246b0"
+			}
+		},
+		{
+			"name": "comments",
+			"scope": ["comment.line.page"],
+			"settings": {
+				"foreground": "#1fb51a",
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"name": "test",
+			"scope": ["test.page"],
+			"settings": {
+				"foreground": "#1fb51a",
+				"fontStyle": "italic"
+		}}
+	]
+}

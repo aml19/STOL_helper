@@ -1,0 +1,61 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "stol",
+	"patterns": [
+		{
+			"include": "#comments"
+			
+		},
+		{
+			"include": "#strings"
+		},
+		{
+			"include": "#built-in-functions"
+		},
+		{
+			"include": "#keywords"
+		},
+		{
+			"include": "#mneumonics"
+		}
+
+	],
+	"repository": {
+		"keywords": {
+			"patterns": [{
+				"name": "keyword.control.stol",
+				"match": "\\b(?i)(/lt|gt|ne|eq|and|or|if|then|while|for|return|acquire|archive|ask|break|breakpoint|cfgmon|close|cmd|continue|date|dir|disable|do|dumpfile|else|elseif|enable|enddo|endif|endproc|eval|event|free|get|global|go|goto|gpib|graph|hotkey|if|killproc|let|limits|local|log|mode verification|namespace|open|page|pktdump|playback|plot|preview|proc|quit|raw|read|rem|report|return|scevent|seqprt|set|setcoef|shoval|snap|speed|start|stripchart|system|tfdump|timeon|validate|verify|wait|write|zero|not|concat)\\b"
+			}]
+		},
+		"strings": {
+			"name": "string.quoted.double.stol",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.stol",
+					"match": "\\\\."
+				}
+			]
+		},
+		"built-in-functions": {
+			"patterns": [{
+				"name": "keyword.control.built-in-functions",
+				"match": "\\b(?i)(exists|iscommand|isdate|isfloat|isglobal|isinlimits|isint|islocal|ismneumonic|isnull|isnumber|isquality|isred|isredhi|isredlo|isstatic|isstring|issymbol|istime|isunsigned|isvariable|isyellow|isyellowhi|isyellowlo|mkdate)\\b"
+			}]
+		},
+		"comments": {
+			"patterns": [{
+				"name": "comment.line.stol",
+				"match": "(;.*)\\n"
+			}]
+		},
+		"mneumonics": {
+			"patterns": [{
+				"name": "mneumonics.stol",
+				"match": "\\b(?i)(ccr_)\\b"
+			}]
+		}
+	},
+	"scopeName": "source.stol"
+}

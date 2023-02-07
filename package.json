@@ -1,0 +1,89 @@
+{
+  "name": "stol-ts",
+  "displayName": "stol-ts",
+  "description": "Help STOL lanugage development",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.71.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "*"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "stol-ts.loadRec",
+        "title": "Load Rec"
+      }],
+      
+    "languages": [{
+      "id": "stol",
+      "aliases": ["stol"],
+      "extensions": [".proc", ".img"],
+      "configuration": "./language-configuration.json"
+    },
+    {
+      "id": "page",
+      "aliases": ["page"],
+      "extensions": [".page", ".sprt", ".sch"],
+      "configuration": "./page-language-configuration.json"
+    },
+    {
+      "id": "rec",
+      "aliases": ["rec"],
+      "extensions": [".rec"],
+      "configuration": "./language-configuration.json"
+    }
+  ],
+    "grammars": [
+      {
+      "language": "stol",
+      "scopeName": "source.stol",
+      "path": "./syntaxes/stol.tmLanguage.json"
+      },
+      {
+        "language": "page",
+        "scopeName": "source.page",
+        "path": "./syntaxes/page.tmLanguage.json"
+      },
+      {
+        "language": "rec",
+        "scopeName": "source.rec",
+        "path": "./syntaxes/rec.tmLanguage.json"
+      }
+    ],
+    "themes": [
+      {
+        "label": "STOL helper",
+        "uiTheme": "vs-dark",
+        "path": "./themes/STOL helper-color-theme.json"
+      }
+    ]
+    
+},
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile && npm run lint",
+    "lint": "eslint src --ext ts",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/vscode": "^1.71.0",
+    "@types/glob": "^7.2.0",
+    "@types/mocha": "^9.1.1",
+    "@types/node": "16.x",
+    "@typescript-eslint/eslint-plugin": "^5.31.0",
+    "@typescript-eslint/parser": "^5.31.0",
+    "eslint": "^8.20.0",
+    "glob": "^8.0.3",
+    "mocha": "^10.0.0",
+    "typescript": "^4.7.4",
+    "@vscode/test-electron": "^2.1.5"
+  }
+}

@@ -1,0 +1,81 @@
+{
+	"name": "STOL helper",
+	"colors": {
+		"editor.background": "#151819",
+		"editor.foreground": "#ddf2f2",
+		"activityBarBadge.background": "#007acc",
+		"sideBarTitle.foreground": "#bbbbbb",
+	},
+	"tokenColors": [
+		{
+			"name": "keywords",
+			"scope": ["keyword.control.stol"],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#5d9bdd"
+			}
+		},
+		{
+			"name": "strings",
+			"scope": ["string.quoted.double.stol"],
+			"settings": {
+				"foreground": "#c78238"
+			}
+		},
+		{
+			"name": "built-in-functions",
+			"scope": ["keyword.control.built-in-functions"],
+			"settings": { 
+				"foreground": "#68abe6"
+			}
+		},
+		{
+			"name": "comments",
+			"scope": ["comment.line.stol"],
+			"settings": {
+				"foreground": "#67d06e",
+				"fontStyle": "italic"
+			}
+		},
+		{
+			"name": "keywords-page",
+			"scope": ["keyword.control.page"],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#5d9bdd"
+			}
+		},
+		{
+			"name": "strings-page",
+			"scope": ["string.quoted.double.page"],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#c78238"
+			}
+		},
+		{
+			"name": "comments-page",
+			"scope": ["comment.line.page"],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#67d06e"
+			}
+		},
+		{
+			"name": "comments-rec",
+			"scope": ["comment.block.documentation.rec"],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#67d06e"
+			}
+		},
+		{
+			"name": "mneumonics",
+			"scope": ["mneumonics.stol"],
+			"settings": {
+				"fontStyle": "italic",
+				"foreground": "#b943ab"
+			}
+		}
+	]
+}

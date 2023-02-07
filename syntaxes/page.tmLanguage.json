@@ -1,0 +1,51 @@
+{
+	"$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+	"name": "page",
+	"patterns": [
+		{
+			"include": "#keywords-page"
+		},
+		{
+			"include": "#strings-page"
+		},
+		{
+			"include": "#comments-page"
+		},
+		{
+			"test": "#test"
+		}
+
+	],
+	"repository": {
+		"keywords-page": {
+			"patterns": [{
+				"name": "keyword.control.page",
+				"match": "\\b(?i)(page|button|color|labelcolor|buttoncolor)\\b"
+                }]
+		},
+		"strings-page": {
+			"name": "string.quoted.double.page",
+			"begin": "\"",
+			"end": "\"",
+			"patterns": [
+				{
+					"name": "constant.character.escape.page",
+					"match": "\\\\."
+				}
+			]
+		},
+		"comments-page": {
+			"patterns": [{
+				"name": "comment.line.page",
+				"match": "(#.*)\\n"
+			}]
+		},
+		"test": {
+			"patterns": [{
+				"name": "test.page",
+				"match": "test"
+			}]
+		}
+	},
+	"scopeName": "source.page"
+}
