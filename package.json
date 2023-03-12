@@ -16,8 +16,12 @@
   "contributes": {
     "commands": [
       {
-        "command": "stol-ts.loadRec",
-        "title": "Load Rec"
+        "command": "stol-ts.test",
+        "title": "Test"
+      },
+      {
+        "command": "stol-ts.checkVars",
+        "title": "CheckVars"
       }],
       
     "languages": [{
