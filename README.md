@@ -1,23 +1,35 @@
 # stol-ts README
 
-This extension has basic grammar for files used in Ground Software for the Galaxy interface. 
+This extension has basic grammar for files used in Ground Software for the Galaxy interface. Also has some useful features and commands.
 
 ## Features
 
 Affected file endings .rec, .page, .proc, .page, .sch
 - includes highlighting for comments, keywords
 
-Can type 'ccr.' to get entire list of mneumonics.  Tlm and Cmd.
-- Didn't use 'ccr_' because that lists mneumonics in the file you're in, which is more likely to be useful
-- You will have to delete the ccr.
+Auto complete items:
+    - Can type 'ccr.' to get drop down of the entire list of mneumonics.  Tlm and Cmd.  
+    - Can type 'start ' or 'START ' to get a dropdown list of proc names.  Triggered on the space ' '.
+    - Can type 'plot ' or 'PLOT ' to get a dropdown list of plot names.  Triggered on the space ' '.
+    - Can type 'page ' or 'PAGE ' to get a dropdown list of page names.  Triggered on the space ' '.
+
+Commands.  Type "Ctrl + Shift + P" for command pallette.
+    - "Indent"
+        - Prints out the full, correctly indented .proc file in OUTPUT > outChannel.
+    - "CheckVars"
+        - TODO, essentially a syntax checker.
 
 ## Requirements
+
+You MUST be in the root ccor*_gsw repo for everything other than the grammar to work.  File > Open Folder > ccor_ground/ccor2_gsw
+
+Then either install or reload this extension.  All the init stuff is done on startup.
 
 ## Extension Settings
 
 ## Known Issues
 
-- Have to delete 'ccr.' after listing mneumonics.
+- Have to re-install or reload extension if you install it not opened on the ground repo
 
 ## Release Notes
 

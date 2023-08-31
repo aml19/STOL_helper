@@ -22,6 +22,10 @@
       {
         "command": "stol-ts.checkVars",
         "title": "CheckVars"
+      },
+      {
+        "command": "stol-ts.indent",
+        "title": "Indent"
       }],
       
     "languages": [{

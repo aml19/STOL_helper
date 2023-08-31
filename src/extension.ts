@@ -1,66 +1,75 @@
 // The module 'vscode' contains the VS Code extensibility API
 // Import the module and reference it with the alias vscode in your code below
-import { Dir, readFileSync } from 'fs';
+import { ConsoleReporter } from '@vscode/test-electron';
+import { Dir, PathOrFileDescriptor, readFileSync } from 'fs';
 import { writeFile } from 'fs/promises';
 import { CipherNameAndProtocol } from 'tls';
 import { pathToFileURL } from 'url';
 import { isNull } from 'util';
 import * as vscode from 'vscode';
 
-var mneumonicList: vscode.ProviderResult<vscode.CompletionItem[] | vscode.CompletionList<vscode.CompletionItem>> = [];
 //holds all STOL keywords
-let keywords: Array<String> = ["lt", "gt", "ne", "eq", "and", "or", "if", "then", "while", "for", "return", "acquire", 
+const keywords: Array<string> = [".lt.", ".gt.", ".ne.", ".eq.", ".and.", ".or.", "if", "then", "while", "for", "return", "acquire", 
 	"archive", "ask", "break", "breakpoint", "cfgmon", "close", "cmd", "continue", "date", "dir", "disable", "do", "dumpfile", 
 	"else", "elseif", "enable", "enddo", "endif", "endproc", "eval", "event", "free", "get", "global", "go", "goto", "gpib", "graph", 
 	"hotkey", "if", "killproc", "let", "limits", "local", "log", "mode verification", "namespace", "open", "page", "pktdump", 
 	"playback", "plot", "preview", "proc", "quit", "raw", "read", "rem", "report", "return", "scevent", "seqprt", "set", 
 	"setcoef", "shoval", "snap", "speed", "start", "stripchart", "system", "tfdump", "timeon", "validate", "verify", "wait", 
-	"write", "zero", "not", "concat", "until", "=", "", "(", ")", "[", "]", "{", "}"];
+	"write", "zero", ".not.", "concat", "until", "=", "", "(", ")", "[", "]", "{", "}",
+
+	"exists", "iscommand", "isdate", "isfloat", "isglobal", "isinlimits", "isint", "islocal", "ismnemonic",
+	"isnull", "isnumber", "isquality", "isred", "isredhi", "isredlo", "isstatic", "isstring", "issymbol", "istime", "isunsigned",
+	"isvariable", "isyellow", "isyellowhi", "isyellowlo", "mkdate", "mkepochdate", "mktime", "todate", "tofloat", "tohexstring",
+	"toint", "tonull", "tostring", "tostringnotnull", "totime", "tounsigned", "bwand", "bwinvert", "bwlshift", "bwor", "bsrshift", 
+	"bwreverse", "bwxor", "abs", "acos", "asin", "atan", "atan2", "ceil", "cos", "cosh", "floor", "ln", "log", "max", "min", "mod",
+	"round", "roundeven", "sin", "sinh", "sqrt", "tan", "tanh", "trunc", "coalesce", "concat", "contains", "convertescape", "escapexmlchars",
+	"format", "lowercase", "name", "replace", "split", "strcasestr", "strfdate", "strlen", "strpackhex", "strstr", "strtok", "strtol", "strtoul", 
+	"substr", "unconvertescape", "uppercase", "iif", "getenv", "ternary"
+];
 
 const PATH = require("path");
 const FS = require("fs");
-let FILES : string[] = [];
 
-var databaseFields = new Array<String>();
 
 //tuple will hold all the members for each of the packet definitions.  
 type TUPLE = [string, vscode.CompletionItem[]];
 type ERRORTUPLE = [string, number];
 
+//output channel to display stuff to
+let channel = vscode.window.createOutputChannel("outChannel");
+
 // this method is called when your extension is activated
 // your extension is activated the very first time the command is executed
 export function activate(context: vscode.ExtensionContext) {
 	
-	//put initialization here
-	databaseFields = getPacketNames();
-	//mneumonicList = populateMneumonicsList();
+	//put initialization here if 
+	//gets all proc file names
+	const procnames = makeCompletionItems(getFileNames("procs"), vscode.CompletionItemKind.File);
 
-	//output channel to display stuff to
-	let channel = vscode.window.createOutputChannel("outChannel");
+	//gets all page file names
+	const pageNames = makeCompletionItems(getFileNames("pages").filter(name => name.endsWith(".page")), vscode.CompletionItemKind.File);
+
+	//get all plot file names
+	const plotNames = makeCompletionItems(getFileNames("pages").filter(name => name.endsWith(".plot")), vscode.CompletionItemKind.File);
 	
-	console.log('STOL helper loaded successfully');
+	//get all mneumonics, commands/tlm
+	var mneumonicList = populateMneumonicsList();
+	
+	vscode.window.showInformationMessage('STOL helper loaded successfully');
 
-	//This is a test command
-	let testCmd = vscode.commands.registerCommand('stol-ts.test', function () {
-		// Display a message box to the user
-		vscode.window.showInformationMessage('Testing Commands');
-		console.log("TESTING");
-		channel.appendLine("TESTING");
-		channel.append("TESTING2");
-		channel.appendLine("TESTING3");
-		channel.append("4");
-		channel.show();
-		vscode.window.showInformationMessage('Finished testing command');
-	});
-
-	//This is a test command
+	//This command goes through the file and checks for redeclared and undeccasdfsa
 	let checkVars = vscode.commands.registerCommand('stol-ts.checkVars', function () {
 		// Display a message box to the user
 		vscode.window.showInformationMessage('Checking Variables');
-		findBadVariables();
+		tokenizeCurrentFile();
 	});
 
-	//This command goes through the file and checks for redeclared and undeccasdfsa
+	//This command goes through and indents logic blocks properly 
+	let indentBlocks = vscode.commands.registerCommand('stol-ts.indent', function () {
+		// Display a message box to the user
+		vscode.window.showInformationMessage('Indenting');
+		indent();
+	});
 
 	//This command loads all the rec file definitions and members
 	/*let loadRec = vscode.commands.registerCommand('stol-ts.loadRec', function () {
@@ -73,8 +82,8 @@ export function activate(context: vscode.ExtensionContext) {
 		vscode.window.showInformationMessage('Finished loading rec database');
 	});*/
 
-	// provides list of mneumonics on "CCR_" trigger
-	/*const mneumonicProvider = vscode.languages.registerCompletionItemProvider(
+	// provides list of mneumonics on "ccr." trigger
+	vscode.languages.registerCompletionItemProvider(
 		'stol',
 		{
 			provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
@@ -86,62 +95,174 @@ export function activate(context: vscode.ExtensionContext) {
 					return undefined;
 				}
 
+				//have to create an entirely new list with current position information so 'ccr.' will be deleleted
+				mneumonicList.forEach( item => {
+					const rangeToRemove = new vscode.Range(position.line, position.character-'ccr.'.length, position.line, position.character);
+    				item.additionalTextEdits = [vscode.TextEdit.delete(rangeToRemove)];
+				});
+
 				return mneumonicList;
 			}
 		},
-		'.' // triggered whenever a '.' is being typed
-	);*/
-
-	//provides autocomplete for all rec file definitions including packets
-	/*const databaseProvider = vscode.languages.registerCompletionItemProvider(
-		'rec',
+		'.' // triggered whenever a '_' is being typed
+	);
+	
+	//displays all proc file names after "start " trigger
+	vscode.languages.registerCompletionItemProvider(
+		'stol',
 		{
-			provideCompletionItems(document: vscode.TextDocument, position: vscode.Position){
-				const linePrefix = document.lineAt(position).text.substring(0,position.character);
-				//wrap in for each
-				databaseFields.forEach(field =>{
-					if(!linePrefix.endsWith(field[0])){
-						return undefined;
-					}
-					//if a valid name and '.' is pressed, return all tokens belonging to that name
-					return field[1];
-				});
-				
+			provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+
+				// get all text until the `position` and check if it reads `ccr.`
+				// and if so then return all mneumonics in xtce_tlm and xtce_cmd
+				const linePrefix = document.lineAt(position).text.substring(0, position.character);
+				if (!linePrefix.endsWith('start ') && !linePrefix.endsWith('START ')) {
+					return undefined;
+				}
+
+				return procnames;
 			}
 		},
-		'.'		// triggered when a '.' is being typed
-		);
+		' ' // triggered whenever a ' ' is being typed
+	);
 
-*/
-	//context.subscriptions.push(mneumonicProvider, loadRec);
-	context.subscriptions.push(testCmd);
+	//displays all page file names after "page " trigger
+	vscode.languages.registerCompletionItemProvider(
+		'stol',
+		{
+			provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+
+				// get all text until the `position` and check if it reads `ccr.`
+				// and if so then return all mneumonics in xtce_tlm and xtce_cmd
+				const linePrefix = document.lineAt(position).text.substring(0, position.character);
+				if (!linePrefix.endsWith('page ') && !linePrefix.endsWith('PAGE ')) {
+					return undefined;
+				}
+
+				return pageNames;
+			}
+		},
+		' ' // triggered whenever a ' ' is being typed
+	);
+
+	// displays all plot file names after "plot " trigger
+	vscode.languages.registerCompletionItemProvider(
+		'stol',
+		{
+			provideCompletionItems(document: vscode.TextDocument, position: vscode.Position) {
+
+				// get all text until the `position` and check if it reads `ccr.`
+				// and if so then return all mneumonics in xtce_tlm and xtce_cmd
+				const linePrefix = document.lineAt(position).text.substring(0, position.character);
+				if (!linePrefix.endsWith('plot ') && !linePrefix.endsWith('PLOT ')) {
+					return undefined;
+				}
+
+				return plotNames;
+			}
+		},
+		' ' // triggered whenever a ' ' is being typed
+	);
+
+	context.subscriptions.push(checkVars, indentBlocks);
 }
 
 // this method is called when your extension is deactivated
 export function deactivate() {}
 
 
+/** 
+ * Purpose: Indents all block statements (IF, WHILE, etc)
+*/
+
+function indent(){
+
+	let message;
+	let filepath: PathOrFileDescriptor | string[] | undefined;
+
+	if(vscode.workspace.workspaceFolders !== undefined) {
+		filepath = vscode.window.activeTextEditor?.document.fileName;
+
+		if(filepath === undefined){
+			message = "File in focus is weird.  Can't read the file";
+
+			vscode.window.showInformationMessage(message);
+			return;
+		}
+
+		let loopElements: string[] = ["if", "else", "elseif", "do"];
+		let endLoop : string[] = ["endif", "enddo"];
+		let indentCounter: number = 0;
+
+		const editor = vscode.window.activeTextEditor;
+		if(editor){
+			const document = editor.document;
+			const text = document.getText();
+			let indentedText = "";
+			const ifRegex = /^\s*if.*then$/i;
+			const beginRegex = /^do|else|elseif$/i;
+			const endRegex = /^\s*enddo|\s*endif|\s*else|\s*elseif$/i;
+
+
+			const result = readFileSync(filepath , 'utf-8');
+			result.split(/\r?\n/).forEach(line => {
+
+				let newline = line.trim();
+				let debug = "";
+
+				//end of loop so go back an indentation level
+				if(endRegex.test(newline)){
+					indentCounter--;
+				}
+
+				for(let i = 0; i < indentCounter; i++){
+					newline = "\t" + newline;
+				}
+
+				//look to see if line is a loop statement
+				if(ifRegex.test(newline) || beginRegex.test(newline)){
+					indentCounter++;
+				}
+
+				indentedText += newline+"\n";
+			});
+
+			console.log(indentedText);
+			channel.append(indentedText);
+			channel.show();
+		}
+	}
+}
+
 /**
  * 	Purpose: goes through current file and looks for undeclared/redeclared variables
  * 	Inputs:
  * 	Outputs: returns list of tuple of words and row,col format
- * 	Details: Only works with local and LOCAL, can't do mixed case
+ * 	Details: Only works with local and LOCAL, can't do mixed case (Local, etc)
+ * DEPRACATED
  */
 function findBadVariables(){
 
 	let message;
-	let filepath;
+	let filepath: PathOrFileDescriptor | string[] | undefined;
+	console.log("findBadVariables");
+	console.log(vscode.workspace.workspaceFolders );
 
 	if(vscode.workspace.workspaceFolders !== undefined) {
+		// keywords that have to be first in a line
+		// get global definitions and add them to declaredArray
 		let wf = vscode.workspace.workspaceFolders[0].uri.path ;
 		let f = vscode.workspace.workspaceFolders[0].uri.fsPath ; 
 		let f2 = vscode.workspace.workspaceFile?.path;
-		let declaredArray: Array<String> = [];
+		let declaredArray: Array<string> = [];
 		let errorsArray: Array<ERRORTUPLE> = [];
-		let varString: String = "";
+		let varString: string = "";
 		let foundLocal = false;
 		let lineCount: number = 1;
 		let isQuote: Boolean = false;		//tracks quotes across multiple lines
+		let isCommand :Boolean = false;
+		let isProcDef : Boolean = false;
+		const localRegex = /^\s*local$\i/;
 	
 		//message = `YOUR-EXTENSION: folder: ${wf} - ${f2}` ;
 		filepath = vscode.window.activeTextEditor?.document.fileName;
@@ -152,15 +273,15 @@ function findBadVariables(){
 			vscode.window.showInformationMessage(message);
 			return;
 		}
-
 		console.log(filepath);
-		
 
 		//open file for reading and tokenizing
 		const result = readFileSync(filepath , 'utf-8');
 		result.split(/\r?\n/).forEach(line => {
 
 			//console.log(line);
+			isProcDef = false;
+			isCommand = false;
 
 			//find all declared variables denoted by line starting with 'local'.  case insensitive
 			//TODO get first word and toUpper
@@ -169,6 +290,8 @@ function findBadVariables(){
 
 			//init varString to line
 			varString = line.trim();
+
+			console.log(varString);
 
 			var commentPos = varString.indexOf(';');
 			//get only non-commented part
@@ -201,6 +324,13 @@ function findBadVariables(){
 				foundLocal = true;
 			}
 
+			//Checking if it's a command. Assume params are correct.
+			var cmdSub = varString.toLowerCase().substring(0,2);
+			if(varString.toLowerCase().substring(0,3) === "cmd" || varString.indexOf("/") === 0){
+				isCommand = true;
+				varString="";		//gross workaround to get declaredArray to not take them
+			}
+
 			/*Not local defintion. Check for excusable cases that ARE NOT errors:
 				- mneumonic starting with ccr_
 				- keyword or '='
@@ -209,12 +339,22 @@ function findBadVariables(){
 			Skip if comment char is first in the line
 			Skip if multiline quote
 			*/
-			if(foundLocal === false && commentPos !== 0 && isQuote===false){
+			if(foundLocal === false && commentPos !== 0 && isQuote===false && isCommand === false){
 				var previousVar = "";
 				//split line with special chars
-				varString.split(/[ (),\t]/).forEach(variable => {
-					variable=variable.trim();
+				varString.split(/[ (),\t=]/).forEach(variable => {
+					variable=variable.trim().toLowerCase();
 					var isError = true;
+
+					//Checking if proc keyword, check filename and match to procname
+					if(previousVar.toLowerCase() === "proc"){
+						var filename = filepath?.toString();
+						var filename = filename?.substring(filename.lastIndexOf("/")+1,filename.lastIndexOf("."));
+						if(filename === variable){
+							isProcDef = true;
+						}
+					}
+
 					//Checking if it's a mneumonic
 					if(variable.indexOf("CCR_") === 0 || variable.indexOf('ccr_') === 0 ||variable.indexOf("Ccr_") === 0){
 						isError = false;
@@ -252,8 +392,13 @@ function findBadVariables(){
 						}
 					}
 					//It's an error, populate error array
-					if(isError === true){
-						errorsArray.push([variable.trim(), lineCount]);
+					if(isError === true && isProcDef === false){
+						errorsArray.push([variable.trim().toLowerCase(), lineCount]);
+					}
+
+					//It's proc parameters
+					if(isProcDef === true){
+						declaredArray.push(variable.toLowerCase());
 					}
 
 					previousVar = variable;
@@ -261,9 +406,9 @@ function findBadVariables(){
 			}
 			//get comma separated variables afterwards
 			else{
-				varString.split(/, /).forEach(variable => {
+				varString.split(/,/).forEach(variable => {
 					//Take tokens left of comment, or all of them if there is no comment
-					if(varString.indexOf(variable) < commentPos || commentPos === -1){
+					if(variable !== ""){
 						declaredArray.push(variable.trim());
 					}
 				});
@@ -277,6 +422,7 @@ function findBadVariables(){
 		if(isQuote === true){
 			errorsArray.push(["QUOTE NEVER ENDED!", lineCount]);
 		}
+
 		console.log("Declared Array: " + declaredArray);
 		console.log("Errors Array: " + errorsArray);
 
@@ -286,7 +432,42 @@ function findBadVariables(){
 	
 		vscode.window.showErrorMessage(message);
 	}
+	console.log("end of findbadvariables");
 
+}
+/**
+ * Purpose: tokenizes and throws errors when undeclared var is used
+ * Input:
+ * Output: prints list of bad variables to console
+ */
+function tokenizeCurrentFile(){
+
+	let message;
+	if(vscode.workspace.workspaceFolders !== undefined) {
+
+		let filepath = vscode.window.activeTextEditor?.document.fileName;
+
+		if(filepath === undefined){
+			message = "File in focus is weird.  Can't read the file";
+
+			vscode.window.showInformationMessage(message);
+			return;
+		}
+
+		const token_patterns:[RegExp, string][] = [
+			[/.lt.|.gt.|.ne.|.eq.|.and.|.or.|if|then|while|for|return|acquire|archive|ask|break|breakpoint|cfgmon|close|cmd|continue|date|dir|disable|do|dumpfile|else|elseif|enable|enddo|endif|endproc|eval|event|free|get|global|go|goto|gpib|graph|hotkey|if|killproc|let|limits|local|log|mode verification|namespace|open|page|pktdump|playback|plot|preview|proc|quit|raw|read|rem|report|return|scevent|seqprt|set|setcoef|shoval|snap|speed|start|stripchart|system|tfdump|timeon|validate|verify|wait|write|zero|.not.|concat|until|=||(|)|[|]|{|}|exists|iscommand|isdate|isfloat|isglobal|isinlimits|isint|islocal|ismnemonic|isnull|isnumber|isquality|isred|isredhi|isredlo|isstatic|isstring|issymbol|istime|isunsigned|isvariable|isyellow|isyellowhi|isyellowlo|mkdate|mkepochdate|mktime|todate|tofloat|tohexstring|toint|tonull|tostring|tostringnotnull|totime|tounsigned|bwand|bwinvert|bwlshift|bwor|bsrshift|bwreverse|bwxor|abs|acos|asin|atan|atan2|ceil|cos|cosh|floor|ln|log|max|min|mod|round|roundeven|sin|sinh|sqrt|tan|tanh|trunc|coalesce|concat|contains|convertescape|escapexmlchars|format|lowercase|name|replace|split|strcasestr|strfdate|strlen|strpackhex|strstr|strtok|strtol|strtoul|substr|unconvertescape|uppercase|iif|getenv|ternary\i/, 'KEYWORD'],// Keywords
+			[/\d+\.\d+|\d+/, 'NUMBER'],	//Numbers (floats and integers)
+			[/'[^']*'|"[^"]*"/, 'STRING'],      // Strings
+			[/\w+/, 'IDENTIFIER'],              // Identifiers
+			[/\=/, 'ASSIGNMENT'],               // Assignment operator
+			[/\;/, 'SEMICOLON'],                // Semicolon
+		];
+		const result = readFileSync(filepath , 'utf-8');
+		result.split(/\r?\n/).forEach(line => {
+
+
+		});
+	}
 }
 /*
 	Purpose: Go through all rec files and get packet structure names
@@ -295,20 +476,21 @@ function findBadVariables(){
 */
 function getPacketNames(){
 		
-	var result = new Array<String>();
+	var result = new Array<string>();
 	var lines;
+	let files : string [];
 
 	//get all the rec files
 	var path = "";
 	if(vscode.workspace.workspaceFolders !== undefined) {
 		var path = vscode.workspace.workspaceFolders[0].uri.fsPath + "/rec";
-		recurseThroughDirs(path);	//populates FILES global
+		files = recurseThroughDirs(path, false);
 	}
 	else{
 		vscode.window.showInformationMessage('Unable to find rec files.');
 		return result;
 	}
-	for(const file of FILES){
+	for(const file of files){
 		
 		//if line contains CCSDSCCTelemtryPacket
 		lines = readFileSync(file, 'utf-8');
@@ -329,6 +511,61 @@ function getPacketNames(){
 	}
 	return result;
 }
+/*
+	Purpose: Gets all the procnames in ground repo
+*/
+function getProcNames(){
+	var result = new Array<string>();
+
+	//get all the proc file names
+	var path = "";
+	if(vscode.workspace.workspaceFolders !== undefined) {
+		var path = vscode.workspace.workspaceFolders[0].uri.fsPath + "/procs";
+		result = recurseThroughDirs(path);	//populates FILES global
+	}
+	else{
+		vscode.window.showInformationMessage('Unable to find rec files.');
+		return result;
+	}
+	return result;
+}
+
+/*
+	Purpose: Gets all the pages/plot file names in ground repo
+*/
+function getFileNames(dirName : string){
+	
+	var result = new Array<string>();
+	var name = "/"+dirName;
+
+	//get all the proc file names
+	var path = "";
+	if(vscode.workspace.workspaceFolders !== undefined) {
+		var path = vscode.workspace.workspaceFolders[0].uri.fsPath + name;
+		result = recurseThroughDirs(path);	//populates FILES global
+	}
+	else{
+		vscode.window.showInformationMessage('Unable to find rec files.');
+		return result;
+	}
+	return result;
+}
+
+
+/**
+ * Converts an array of strings into completion items.  Assumes the string elemet
+ * @returns list of completion items
+ */
+function makeCompletionItems(list : string[], kind : vscode.CompletionItemKind){
+	const result = list.map(name => {
+		name = name.substring(0, name.lastIndexOf("."));
+		const item = new vscode.CompletionItem(name);
+		item.kind = kind;
+		return item;
+	});
+	return result;
+}
+
 /*	Purpose: Goes through xtce_tlm and xtce_cmd.rec files to grab all the CCR_* mneumonics
 	Inputs:
 	Outputs: returns list of vscode.CompletionItem
@@ -341,19 +578,18 @@ function populateMneumonicsList() {
 		var path = vscode.workspace.workspaceFolders[0].uri.fsPath;
 	}
 	var tempA: vscode.CompletionItem[] = [];
-	var tlmString = "";
 	const result = readFileSync(path + "/rec/xtce_tlm.rec", 'utf-8');
 	result.split(/\r?\n/).forEach(line => {
 		var index = line.indexOf("CCR_");
 		var end = line.indexOf("{", index+1);
-		var sub = line.substring(index, end-1).trim();
-		if(sub.length > 3){
-			tlmString += sub + "\n";
-			var item = new vscode.CompletionItem(sub, vscode.CompletionItemKind.Variable);
+		var ccrString = line.substring(index, end-1).trim();
+		if(ccrString.length > 3){
+			//var item = new vscode.CompletionItem(ccrString, vscode.CompletionItemKind.Variable);
+			var item = new vscode.CompletionItem(ccrString);
 			item.detail = "Detail";
 			item.documentation = "documentation";
+			item.insertText = ccrString;
 			tempA.push(item);
-			//console.log(tlmString + "\n");
 		}
 		
 	});
@@ -369,6 +605,7 @@ function populateMneumonicsList() {
 function populateDatabaseMembers(){
 	
 	var result = new Array<TUPLE>();
+	var files : string[];
 	var line;
 	var name:string = "";
 	var paranths = 1;		//used to keep track of paranths
@@ -382,7 +619,7 @@ function populateDatabaseMembers(){
 	var path = "";
 	if(vscode.workspace.workspaceFolders !== undefined) {
 		var path = vscode.workspace.workspaceFolders[0].uri.fsPath + "/rec";
-		recurseThroughDirs(path);	//populates FILES global
+		files = recurseThroughDirs(path);	//populates FILES global
 	}
 	else{
 		vscode.window.showInformationMessage('Unable to find rec files.');
@@ -390,7 +627,7 @@ function populateDatabaseMembers(){
 	}
 	var identifiers : string[] = ["CCSDSCCORTelemetryPacket"];
 	//go through each of the rec files and add to tuple
-	for(const file of FILES){
+	for(const file of files){
 		
 		//if line contains CCSDSCCTelemtryPacket
 		line = readFileSync(file, 'utf-8');
@@ -469,11 +706,17 @@ function populateDatabaseMembers(){
 	return result;
 }
 
-function recurseThroughDirs(directory: string) {
+function recurseThroughDirs(directory: string, trimFileNames:Boolean = true, result: string[] = []) {
 	const files = FS.readdirSync(directory);
+	//var result : string [] = [];
 	for(const file of files){
-		const absoluteFilePath = PATH.join(directory, file);
+		const absoluteFilePath:string = PATH.join(directory, file);
 		if(FS.statSync(absoluteFilePath).isDirectory()) {recurseThroughDirs(absoluteFilePath);}
-		else {FILES.push(absoluteFilePath);}
+		else {
+			var nameOnly = absoluteFilePath.substring(absoluteFilePath.lastIndexOf("/")+1);
+			if(trimFileNames === false){nameOnly = absoluteFilePath;}
+			result.push(nameOnly);
+		}
 	}
+	return result;
 }

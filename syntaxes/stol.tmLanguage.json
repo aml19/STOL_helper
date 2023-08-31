@@ -53,7 +53,7 @@
 		"mneumonics": {
 			"patterns": [{
 				"name": "mneumonics.stol",
-				"match": "\\b(?i)(ccr_)\\b"
+				"match": "\\b(?i)^(ccr_)$\\b"
 			}]
 		}
 	},
